@@ -10,6 +10,7 @@ from modal import Ui_Dialog
 import os
 import sys
 import xml.etree.ElementTree as ET
+import shutil
 
 from qt_material import apply_stylesheet
 
@@ -35,6 +36,20 @@ class ExampleApp(QtWidgets.QMainWindow, ui.Ui_MainWindow):
         self.pushButton_5.clicked.connect(self.treeWidget.clear)
         self.speak[list].connect(self.set_custom_variables)
 
+    def closeEvent(self, event):
+        if os.path.isdir("./TWX"):
+            reply = QtWidgets.QMessageBox.question(
+                        self, 
+                        "Exit", 
+                        "Удалить созданную директорию TWX?", 
+                        QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                        QtWidgets.QMessageBox.No
+            )
+            if reply == QtWidgets.QMessageBox.Yes:
+                print(os.getcwd())
+                shutil.rmtree("./TWX")
+        event.accept()
+
     def load_setting(self) -> None:
         self.comboBox.hide()
         self.pushButton_2.hide()
@@ -47,25 +62,21 @@ class ExampleApp(QtWidgets.QMainWindow, ui.Ui_MainWindow):
         self.progressBar.setValue(0)
         self.progressBar.setMaximum(0)
 
-
     @Slot(list)
     def set_custom_variables(self, variables: list[str]) -> None:
         self.custom_env_variables = variables
         self.env_variables.extend(self.custom_env_variables)
         self.env_variables = list(set(self.env_variables))
         self.update_combo_box()
-    
 
     def show_add_variables_dialog(self) -> None:
         self.dialog = Dialog(self, self.custom_env_variables)
         self.dialog.show()
 
-
     def update_combo_box(self) -> None:
         self.comboBox.clear()
         self.comboBox.addItems(self.env_variables)
         self.comboBox.show()
-
 
     def search_env_variables(self) -> None:
         self.progressBar.show()
@@ -76,57 +87,56 @@ class ExampleApp(QtWidgets.QMainWindow, ui.Ui_MainWindow):
         self.pushButton_4.show()
         self.pushButton_2.show()
         self.progressBar.hide()
-        
 
     def show_file_dialog(self) -> None:
-        self.twx_file_path, _ = QFileDialog.getOpenFileName(self, "Выберите twx файл", ".", "TWX files (*.twx)")
-        self.folder_path = self.unpacking()
-        self.lineEdit.setText(self.twx_file_path)
-        self.lineEdit_2.setText(self.folder_path)
-        self.pushButton_3.show()
-    
+        self.twx_file_path, _ = QFileDialog.getOpenFileName(
+            self, "Выберите twx файл", ".", "TWX files (*.twx)"
+        )
+        if self.twx_file_path:
+            self.folder_path = self.unpacking()
+            self.lineEdit.setText(self.twx_file_path)
+            self.lineEdit_2.setText(self.folder_path)
+            self.pushButton_3.show()
 
     def unpacking(self) -> str:
         folder = "./TWX"
-        name =  folder + "/" + self.twx_file_path.split('/')[-1].replace(".twx", "")
+        name = folder + "/" + self.twx_file_path.split("/")[-1].replace(".twx", "")
         if os.path.isdir(name):
             return name
-        with zipfile.ZipFile(self.twx_file_path, 'r') as zip_file: 
+        with zipfile.ZipFile(self.twx_file_path, "r") as zip_file:
             for file in zip_file.namelist():
                 if "objects" in file:
                     zip_file.extract(file, folder)
         os.rename("./TWX/objects", name)
         return name
-        
 
     def get_all_files_by_path(self) -> tuple[str]:
-        return tuple(os.path.join(self.folder_path, file) for _, _, filenames in os.walk(self.folder_path) for file in filenames)
-
+        return tuple(
+            os.path.join(self.folder_path, file)
+            for _, _, filenames in os.walk(self.folder_path)
+            for file in filenames
+        )
 
     def search_for_files_with_env_variables(self, files: tuple[str]):
         with fileinput.input(files=files) as file:
             for line in file:
-                if 'environmentVariableSet' in line:
+                if "environmentVariableSet" in line:
                     return file.filename()
-                
-                
+
     def get_list_of_variables_from_file(self, path: str) -> tuple[str]:
         root = ET.parse(path).getroot()
         result = list(
             filter(
-                partial(is_not, None), 
-                [envVar.attrib.get('name') for envVar in root[0]]
+                partial(is_not, None), [envVar.attrib.get("name") for envVar in root[0]]
             )
         )
         return result
 
-
     def start_search_thread(self) -> None:
-        if self.comboBox.currentText() =="":
+        if self.comboBox.currentText() == "":
             return
-        self.thread =  MyThread(self)
+        self.thread = MyThread(self)
         self.thread.run()
-    
 
     def remove_item_from_tree_by_name(self, name: str) -> None:
         for index in range(self.treeWidget.topLevelItemCount()):
@@ -134,9 +144,10 @@ class ExampleApp(QtWidgets.QMainWindow, ui.Ui_MainWindow):
             if item.text(0) == name:
                 self.treeWidget.takeTopLevelItem(index)
                 return
-                
 
-    def find_files_in_with_the_variables_used(self, variable_name, files: tuple) -> tuple[str]:
+    def find_files_in_with_the_variables_used(
+        self, variable_name, files: tuple
+    ) -> tuple[str]:
         result = []
         variable = f"tw.env.{variable_name}"
         with fileinput.input(files=files) as file:
@@ -153,21 +164,18 @@ class ExampleApp(QtWidgets.QMainWindow, ui.Ui_MainWindow):
         self.pushButton_4.setEnabled(flag)
         self.comboBox.setEnabled(flag)
 
-    
-
 class Dialog(QWidget, Ui_Dialog):
-    def __init__(self, mainWindow, variables,*args, **kwargs):
+    def __init__(self, mainWindow, variables, *args, **kwargs):
         QtWidgets.QWidget.__init__(self, *args, **kwargs)
         self.setupUi(self)
         self.mainWindow = mainWindow
         self.variables = variables
         if len(self.variables) > 0:
             for i in self.variables:
-                self.update(i) 
+                self.update(i)
         self.pushButton_3.clicked.connect(self.add)
         self.pushButton_2.clicked.connect(self.close)
         self.pushButton.clicked.connect(self.setVariables)
-    
 
     def add(self) -> None:
         if self.lineEdit.text() != "":
@@ -186,7 +194,7 @@ class Dialog(QWidget, Ui_Dialog):
 
 
 class MyThread(QThread):
-    def __init__(self, main, parent = None):
+    def __init__(self, main, parent=None):
         QThread.__init__(self, parent)
         self.exiting = False
         self.main = main
@@ -195,25 +203,32 @@ class MyThread(QThread):
         self.main.setEnabledWidgets(False)
         self.main.progressBar.show()
         files = self.main.get_all_files_by_path()
-        files = self.main.find_files_in_with_the_variables_used(self.main.comboBox.currentText(),files)
+        files = self.main.find_files_in_with_the_variables_used(
+            self.main.comboBox.currentText(), files
+        )
         if files != []:
-            if item := self.searching_for_data_by_variable(files, self.main.comboBox.currentText()):
+            if item := self.searching_for_data_by_variable(
+                files, self.main.comboBox.currentText()
+            ):
                 self.main.remove_item_from_tree_by_name(item.get("VariableName"))
                 tree_widget_item1 = QTreeWidgetItem([item.get("VariableName")])
-                
+
                 for artifact in item.get("Result"):
                     name = artifact.get("ArtefactName")
                     tree_widget_item2 = QTreeWidgetItem([name])
                     if len(name.split("-")) == 5:
-                        tree_widget_item2.setToolTip(0, "Это вложенный процесс/подпроцесс.\nИмя родителя где он используется можно найти но очень затратно!")
+                        tree_widget_item2.setToolTip(
+                            0,
+                            "Это вложенный процесс/подпроцесс.\nИмя родителя где он используется можно найти но очень затратно!",
+                        )
                     for child_artifacts in artifact.get("ChildArtifacts"):
                         tree_widget_item2.addChild(QTreeWidgetItem([child_artifacts]))
                     tree_widget_item1.addChild(tree_widget_item2)
                 self.main.treeWidget.addTopLevelItem(tree_widget_item1)
-        
+
         self.main.setEnabledWidgets(True)
         self.main.progressBar.hide()
-    
+
     def searching_for_data_by_variable(self, files: tuple, variable_name):
         variable = f"tw.env.{variable_name}"
         result = {"VariableName": variable}
@@ -221,35 +236,45 @@ class MyThread(QThread):
         for file in files:
             # Получаем объект XML Файла
             root = ET.parse(file).getroot()
-            artefact_name = root[0].attrib.get('name')
+            artefact_name = root[0].attrib.get("name")
             # Если имя артефакта UID берем ID
-            if len(artefact_name.split('-')) == 5:
-                    artefact_name = root[0].attrib.get('id')
+            if len(artefact_name.split("-")) == 5:
+                artefact_name = root[0].attrib.get("id")
             data = {"ArtefactName": artefact_name}
             data_list = []
             # Получаем все вложенные артефакты
             child_items = tuple(
-                {elem for elem in root.iter() if elem.tag == 'item' or elem.tag == 'flowObject'})
+                {
+                    elem
+                    for elem in root.iter()
+                    if elem.tag == "item" or elem.tag == "flowObject"
+                }
+            )
             # Находим вложенные артефакты в которых есть нужная переменная
             for item in child_items:
                 for i in item.iter():
                     if i.text and variable_name in i.text:
                         # Получаем имя вложенного артефакта
-                        data_list.append([element.text for element in item.iter()
-                                        if element.tag == "name"][0])
+                        data_list.append(
+                            [
+                                element.text
+                                for element in item.iter()
+                                if element.tag == "name"
+                            ][0]
+                        )
             data["ChildArtifacts"] = data_list
             list_result.append(data)
         result["Result"] = list_result
         return result
 
-            
+
 def main():
     app = QtWidgets.QApplication(sys.argv)  # Новый экземпляр QApplication
     window = ExampleApp()  # Создаём объект класса ExampleApp
-    apply_stylesheet(app, theme='dark_teal.xml')
+    apply_stylesheet(app, theme="dark_teal.xml")
     window.show()  # Показываем окно
     app.exec_()  # и запускаем приложение
 
 
-if __name__ == '__main__':  # Если мы запускаем файл напрямую, а не импортируем
+if __name__ == "__main__":  # Если мы запускаем файл напрямую, а не импортируем
     main()  # то запускаем функцию main()
