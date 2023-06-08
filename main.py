@@ -119,7 +119,7 @@ class ExampleApp(QtWidgets.QMainWindow, ui.Ui_MainWindow):
         )
 
     def search_for_files_with_env_variables(self, files: tuple[str]):
-        with fileinput.input(files=files) as file:
+        with fileinput.input(files=files, encoding='utf-8') as file:
             for line in file:
                 if "environmentVariableSet" in line:
                     return file.filename()
@@ -152,7 +152,7 @@ class ExampleApp(QtWidgets.QMainWindow, ui.Ui_MainWindow):
     ) -> tuple[str]:
         result = []
         variable = f"tw.env.{variable_name}"
-        with fileinput.input(files=files) as file:
+        with fileinput.input(files=files, encoding='utf-8') as file:
             for line in file:
                 if variable in line:
                     result.append(file.filename())
