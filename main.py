@@ -11,7 +11,6 @@ import os
 import sys
 import xml.etree.ElementTree as ET
 import shutil
-
 from qt_material import apply_stylesheet
 
 
@@ -28,7 +27,7 @@ class ExampleApp(QtWidgets.QMainWindow, ui.Ui_MainWindow):
         self.custom_env_variables = []
         self.dialog = None
         self.thread = None
-        self.comboBox.currentTextChanged.connect(self.on_combobox_changed)
+
 
         self.pushButton.clicked.connect(self.show_file_dialog)
         self.pushButton_3.clicked.connect(self.search_env_variables)
@@ -36,6 +35,20 @@ class ExampleApp(QtWidgets.QMainWindow, ui.Ui_MainWindow):
         self.pushButton_2.clicked.connect(self.start_search_thread)
         self.pushButton_5.clicked.connect(self.treeWidget.clear)
         self.speak[list].connect(self.set_custom_variables)
+    
+    def closeEvent(self, event):
+        if os.path.isdir("./TWX"):
+            reply = QtWidgets.QMessageBox.question(
+                        self, 
+                        "Exit", 
+                        "Удалить созданную директорию TWX?", 
+                        QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                        QtWidgets.QMessageBox.No
+            )
+            if reply == QtWidgets.QMessageBox.Yes:
+                print(os.getcwd())
+                shutil.rmtree("./TWX")
+        event.accept()
 
     def load_setting(self) -> None:
         self.comboBox.setEditable(True)
@@ -122,7 +135,7 @@ class ExampleApp(QtWidgets.QMainWindow, ui.Ui_MainWindow):
         return result
 
     def start_search_thread(self) -> None:
-        if self.comboBox.currentText() =="":
+        if self.comboBox.currentText() not in self.env_variables:
             return
         self.thread = MyThread(self)
         self.thread.run()
