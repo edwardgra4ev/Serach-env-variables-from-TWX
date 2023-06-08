@@ -37,23 +37,6 @@ class ExampleApp(QtWidgets.QMainWindow, ui.Ui_MainWindow):
         self.pushButton_5.clicked.connect(self.treeWidget.clear)
         self.speak[list].connect(self.set_custom_variables)
 
-    def on_combobox_changed(self, value):
-        self.comboBox.showPopup()
-   
-    def closeEvent(self, event):
-        if os.path.isdir("./TWX"):
-            reply = QtWidgets.QMessageBox.question(
-                        self, 
-                        "Exit", 
-                        "Удалить созданную директорию TWX?", 
-                        QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                        QtWidgets.QMessageBox.No
-            )
-            if reply == QtWidgets.QMessageBox.Yes:
-                print(os.getcwd())
-                shutil.rmtree("./TWX")
-        event.accept()
-
     def load_setting(self) -> None:
         self.comboBox.setEditable(True)
         self.comboBox.hide()
@@ -139,7 +122,7 @@ class ExampleApp(QtWidgets.QMainWindow, ui.Ui_MainWindow):
         return result
 
     def start_search_thread(self) -> None:
-        if self.comboBox.currentText() not in self.env_variables:
+        if self.comboBox.currentText() =="":
             return
         self.thread = MyThread(self)
         self.thread.run()
