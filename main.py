@@ -28,6 +28,7 @@ class ExampleApp(QtWidgets.QMainWindow, ui.Ui_MainWindow):
         self.custom_env_variables = []
         self.dialog = None
         self.thread = None
+        self.comboBox.currentTextChanged.connect(self.on_combobox_changed)
 
         self.pushButton.clicked.connect(self.show_file_dialog)
         self.pushButton_3.clicked.connect(self.search_env_variables)
@@ -36,6 +37,9 @@ class ExampleApp(QtWidgets.QMainWindow, ui.Ui_MainWindow):
         self.pushButton_5.clicked.connect(self.treeWidget.clear)
         self.speak[list].connect(self.set_custom_variables)
 
+    def on_combobox_changed(self, value):
+        self.comboBox.showPopup()
+   
     def closeEvent(self, event):
         if os.path.isdir("./TWX"):
             reply = QtWidgets.QMessageBox.question(
@@ -51,6 +55,7 @@ class ExampleApp(QtWidgets.QMainWindow, ui.Ui_MainWindow):
         event.accept()
 
     def load_setting(self) -> None:
+        self.comboBox.setEditable(True)
         self.comboBox.hide()
         self.pushButton_2.hide()
         self.pushButton_3.hide()
@@ -130,10 +135,11 @@ class ExampleApp(QtWidgets.QMainWindow, ui.Ui_MainWindow):
                 partial(is_not, None), [envVar.attrib.get("name") for envVar in root[0]]
             )
         )
+        result.sort()
         return result
 
     def start_search_thread(self) -> None:
-        if self.comboBox.currentText() == "":
+        if self.comboBox.currentText() not in self.env_variables:
             return
         self.thread = MyThread(self)
         self.thread.run()
